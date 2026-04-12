@@ -40,11 +40,12 @@ Period: Annual data from 2015 to 2025
 ```
 ESG-Financial-Metrics-Analysis/
 │
-├── data/          # Raw and processed datasets  
-├── notebooks/     # Analysis and experimentation  
-├── src/           # Source code  
-├── reports/       # Final outputs and insights  
-├── README.md  
+├── data/        # Dataset (raw + cleaned)
+├── reports/     # Outputs (PDFs, charts, insights)
+├── main/        # Actual work (code + notebooks + logic)
+│
+├── README.md
+├── requirements.txt (optional later) 
 ```
 
 ---
