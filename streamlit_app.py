@@ -3,8 +3,26 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 
-st.set_page_config(page_title="ESG Analytics Dashboard", layout="wide")
+# -----------------------------
+# PAGE CONFIG + DARK THEME
+# -----------------------------
+st.set_page_config(page_title="ESG Intelligence Dashboard", layout="wide")
+
+st.markdown("""
+    <style>
+    body {
+        background-color: #0E1117;
+        color: white;
+    }
+    .stMetric {
+        background-color: #1c1f26;
+        padding: 15px;
+        border-radius: 10px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # -----------------------------
 # LOAD DATA
@@ -16,121 +34,161 @@ def load_data():
 df = load_data()
 
 # -----------------------------
+# ESG SEGMENTATION
+# -----------------------------
+def esg_category(score):
+    if score >= 70:
+        return "High"
+    elif score >= 40:
+        return "Medium"
+    else:
+        return "Low"
+
+# auto-detect ESG column
+esg_col = [col for col in df.columns if "esg" in col.lower()]
+if esg_col:
+    df["ESG_Category"] = df[esg_col[0]].apply(esg_category)
+
+# -----------------------------
 # SIDEBAR FILTERS
 # -----------------------------
 st.sidebar.title("🔎 Filters")
 
-# Identify categorical columns safely
 categorical_cols = df.select_dtypes(include='object').columns.tolist()
 
-# Try common ESG dataset filters
-region_col = [col for col in categorical_cols if "region" in col.lower()]
-industry_col = [col for col in categorical_cols if "industry" in col.lower()]
-year_col = [col for col in df.columns if "year" in col.lower()]
+region_col = [c for c in categorical_cols if "region" in c.lower()]
+industry_col = [c for c in categorical_cols if "industry" in c.lower()]
+year_col = [c for c in df.columns if "year" in c.lower()]
 
 filtered_df = df.copy()
 
 if region_col:
-    region = st.sidebar.multiselect("Region", df[region_col[0]].unique())
-    if region:
-        filtered_df = filtered_df[filtered_df[region_col[0]].isin(region)]
+    selected = st.sidebar.multiselect("Region", df[region_col[0]].unique())
+    if selected:
+        filtered_df = filtered_df[filtered_df[region_col[0]].isin(selected)]
 
 if industry_col:
-    industry = st.sidebar.multiselect("Industry", df[industry_col[0]].unique())
-    if industry:
-        filtered_df = filtered_df[filtered_df[industry_col[0]].isin(industry)]
+    selected = st.sidebar.multiselect("Industry", df[industry_col[0]].unique())
+    if selected:
+        filtered_df = filtered_df[filtered_df[industry_col[0]].isin(selected)]
 
 if year_col:
-    year = st.sidebar.multiselect("Year", df[year_col[0]].unique())
-    if year:
-        filtered_df = filtered_df[filtered_df[year_col[0]].isin(year)]
+    selected = st.sidebar.multiselect("Year", sorted(df[year_col[0]].unique()))
+    if selected:
+        filtered_df = filtered_df[filtered_df[year_col[0]].isin(selected)]
 
 # -----------------------------
 # TITLE
 # -----------------------------
-st.title("📊 ESG Financial Analytics Dashboard")
+st.title("🌍 ESG Intelligence Dashboard")
 
 # -----------------------------
 # KPI SECTION
 # -----------------------------
-st.subheader("📌 Key Metrics")
+st.subheader("📊 Key Performance Indicators")
 
 numeric_df = filtered_df.select_dtypes(include=np.number)
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric("Total Companies", len(filtered_df))
+    st.metric("Companies", len(filtered_df))
 
 with col2:
-    st.metric("Avg ESG Score", round(numeric_df.mean().mean(), 2))
+    if esg_col:
+        st.metric("Avg ESG Score", round(filtered_df[esg_col[0]].mean(), 2))
 
 with col3:
-    st.metric("Avg Revenue", round(numeric_df.mean().max(), 2))
+    revenue_col = [c for c in numeric_df.columns if "revenue" in c.lower()]
+    if revenue_col:
+        st.metric("Avg Revenue", round(filtered_df[revenue_col[0]].mean(), 2))
 
 with col4:
-    st.metric("Avg Profit", round(numeric_df.mean().min(), 2))
+    profit_col = [c for c in numeric_df.columns if "profit" in c.lower()]
+    if profit_col:
+        st.metric("Avg Profit", round(filtered_df[profit_col[0]].mean(), 2))
 
 # -----------------------------
-# DATA PREVIEW
+# ESG CATEGORY DISTRIBUTION
 # -----------------------------
-st.subheader("📄 Data Snapshot")
-st.dataframe(filtered_df.head())
+if "ESG_Category" in filtered_df.columns:
+    st.subheader("📊 ESG Score Segmentation")
 
-# -----------------------------
-# VISUALIZATION SECTION
-# -----------------------------
-st.subheader("📈 Insights & Trends")
-
-# Layout
-col1, col2 = st.columns(2)
-
-# ---- Correlation Heatmap
-with col1:
-    st.write("### Correlation Heatmap")
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.heatmap(numeric_df.corr(), cmap="coolwarm", ax=ax)
+    fig, ax = plt.subplots()
+    filtered_df["ESG_Category"].value_counts().plot(kind="bar", ax=ax)
+    ax.set_title("ESG Category Distribution")
     st.pyplot(fig)
 
-# ---- Distribution Plot
-with col2:
-    st.write("### Distribution")
-    selected_col = st.selectbox("Select Metric", numeric_df.columns)
-    fig2, ax2 = plt.subplots()
-    sns.histplot(filtered_df[selected_col], kde=True, ax=ax2)
-    ax2.set_title(selected_col)
-    st.pyplot(fig2)
+# -----------------------------
+# TIME SERIES ANALYSIS
+# -----------------------------
+if year_col:
+    st.subheader("📈 Time Series Trends")
+
+    metric = st.selectbox("Select Metric", numeric_df.columns)
+
+    trend = filtered_df.groupby(year_col[0])[metric].mean()
+
+    fig, ax = plt.subplots()
+    trend.plot(marker='o', ax=ax)
+    ax.set_title(f"{metric} over Time")
+    st.pyplot(fig)
 
 # -----------------------------
-# COMPARISON SECTION
+# CORRELATION HEATMAP
 # -----------------------------
-st.subheader("🔍 Metric Comparison")
+st.subheader("🔗 Correlation Analysis")
 
-col1, col2 = st.columns(2)
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.heatmap(numeric_df.corr(), cmap="coolwarm", ax=ax)
+st.pyplot(fig)
 
-x_axis = col1.selectbox("X-axis", numeric_df.columns)
-y_axis = col2.selectbox("Y-axis", numeric_df.columns)
+# -----------------------------
+# SCATTER INSIGHT
+# -----------------------------
+st.subheader("🔍 Feature Relationship")
 
-fig3, ax3 = plt.subplots()
-sns.scatterplot(x=filtered_df[x_axis], y=filtered_df[y_axis], ax=ax3)
-ax3.set_xlabel(x_axis)
-ax3.set_ylabel(y_axis)
+x = st.selectbox("X-axis", numeric_df.columns)
+y = st.selectbox("Y-axis", numeric_df.columns)
 
-st.pyplot(fig3)
+fig, ax = plt.subplots()
+sns.scatterplot(x=filtered_df[x], y=filtered_df[y], ax=ax)
+st.pyplot(fig)
 
 # -----------------------------
 # TOP PERFORMERS
 # -----------------------------
-st.subheader("🏆 Top Performers")
+st.subheader("🏆 Top Companies")
 
-sort_col = st.selectbox("Sort by", numeric_df.columns)
-
+sort_col = st.selectbox("Sort By", numeric_df.columns)
 top_df = filtered_df.sort_values(by=sort_col, ascending=False).head(10)
-
 st.dataframe(top_df)
+
+# -----------------------------
+# ML PREDICTION
+# -----------------------------
+st.subheader("🤖 ESG Prediction Engine")
+
+try:
+    model = joblib.load("model.pkl")
+    st.success("Model Loaded Successfully")
+
+    input_data = {}
+
+    for col in numeric_df.columns:
+        input_data[col] = st.number_input(col, float(df[col].min()), float(df[col].max()))
+
+    input_df = pd.DataFrame([input_data])
+
+    if st.button("Predict"):
+        pred = model.predict(input_df)
+        st.success(f"Prediction: {pred[0]}")
+
+except:
+    st.warning("Model not found. Add model.pkl to enable predictions")
 
 # -----------------------------
 # FOOTER
 # -----------------------------
 st.markdown("---")
-st.caption("Built for ESG Financial Metrics Analysis | Streamlit Dashboard")
+st.caption("Built with Streamlit | ESG Intelligence System")
