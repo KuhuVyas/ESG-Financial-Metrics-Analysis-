@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.set_page_config(page_title="ESG Dashboard", layout="wide")
+st.set_page_config(page_title="ESG Analytics Dashboard", layout="wide")
 
 # -----------------------------
 # LOAD DATA
@@ -16,77 +16,121 @@ def load_data():
 df = load_data()
 
 # -----------------------------
-# SIDEBAR
+# SIDEBAR FILTERS
 # -----------------------------
-st.sidebar.title("📊 ESG Dashboard")
-page = st.sidebar.radio(
-    "Go to",
-    ["Overview", "EDA", "Visualization"]
-)
+st.sidebar.title("🔎 Filters")
 
-# -----------------------------
-# OVERVIEW
-# -----------------------------
-if page == "Overview":
-    st.title("📌 Dataset Overview")
+# Identify categorical columns safely
+categorical_cols = df.select_dtypes(include='object').columns.tolist()
 
-    col1, col2 = st.columns(2)
+# Try common ESG dataset filters
+region_col = [col for col in categorical_cols if "region" in col.lower()]
+industry_col = [col for col in categorical_cols if "industry" in col.lower()]
+year_col = [col for col in df.columns if "year" in col.lower()]
 
-    with col1:
-        st.metric("Rows", df.shape[0])
-        st.metric("Columns", df.shape[1])
+filtered_df = df.copy()
 
-    with col2:
-        st.write("### Preview")
-        st.dataframe(df.head())
+if region_col:
+    region = st.sidebar.multiselect("Region", df[region_col[0]].unique())
+    if region:
+        filtered_df = filtered_df[filtered_df[region_col[0]].isin(region)]
 
-# -----------------------------
-# EDA
-# -----------------------------
-elif page == "EDA":
-    st.title("📈 Exploratory Data Analysis")
+if industry_col:
+    industry = st.sidebar.multiselect("Industry", df[industry_col[0]].unique())
+    if industry:
+        filtered_df = filtered_df[filtered_df[industry_col[0]].isin(industry)]
 
-    st.subheader("Statistical Summary")
-    st.dataframe(df.describe())
-
-    numeric_cols = df.select_dtypes(include=np.number).columns
-
-    selected_col = st.selectbox("Select feature", numeric_cols)
-
-    fig, ax = plt.subplots()
-    sns.histplot(df[selected_col], kde=True, ax=ax)
-    ax.set_title(f"Distribution of {selected_col}")
-    st.pyplot(fig)
+if year_col:
+    year = st.sidebar.multiselect("Year", df[year_col[0]].unique())
+    if year:
+        filtered_df = filtered_df[filtered_df[year_col[0]].isin(year)]
 
 # -----------------------------
-# VISUALIZATION
+# TITLE
 # -----------------------------
-elif page == "Visualization":
-    st.title("📊 Data Visualization")
+st.title("📊 ESG Financial Analytics Dashboard")
 
-    numeric_df = df.select_dtypes(include=np.number)
+# -----------------------------
+# KPI SECTION
+# -----------------------------
+st.subheader("📌 Key Metrics")
 
-    # Correlation heatmap
-    st.subheader("Correlation Heatmap")
-    fig, ax = plt.subplots(figsize=(10, 6))
+numeric_df = filtered_df.select_dtypes(include=np.number)
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("Total Companies", len(filtered_df))
+
+with col2:
+    st.metric("Avg ESG Score", round(numeric_df.mean().mean(), 2))
+
+with col3:
+    st.metric("Avg Revenue", round(numeric_df.mean().max(), 2))
+
+with col4:
+    st.metric("Avg Profit", round(numeric_df.mean().min(), 2))
+
+# -----------------------------
+# DATA PREVIEW
+# -----------------------------
+st.subheader("📄 Data Snapshot")
+st.dataframe(filtered_df.head())
+
+# -----------------------------
+# VISUALIZATION SECTION
+# -----------------------------
+st.subheader("📈 Insights & Trends")
+
+# Layout
+col1, col2 = st.columns(2)
+
+# ---- Correlation Heatmap
+with col1:
+    st.write("### Correlation Heatmap")
+    fig, ax = plt.subplots(figsize=(6, 4))
     sns.heatmap(numeric_df.corr(), cmap="coolwarm", ax=ax)
     st.pyplot(fig)
 
-    # Scatter plot
-    st.subheader("Feature Comparison")
-
-    col1 = st.selectbox("X-axis", numeric_df.columns)
-    col2 = st.selectbox("Y-axis", numeric_df.columns)
-
+# ---- Distribution Plot
+with col2:
+    st.write("### Distribution")
+    selected_col = st.selectbox("Select Metric", numeric_df.columns)
     fig2, ax2 = plt.subplots()
-    sns.scatterplot(x=df[col1], y=df[col2], ax=ax2)
-    ax2.set_xlabel(col1)
-    ax2.set_ylabel(col2)
-
+    sns.histplot(filtered_df[selected_col], kde=True, ax=ax2)
+    ax2.set_title(selected_col)
     st.pyplot(fig2)
+
+# -----------------------------
+# COMPARISON SECTION
+# -----------------------------
+st.subheader("🔍 Metric Comparison")
+
+col1, col2 = st.columns(2)
+
+x_axis = col1.selectbox("X-axis", numeric_df.columns)
+y_axis = col2.selectbox("Y-axis", numeric_df.columns)
+
+fig3, ax3 = plt.subplots()
+sns.scatterplot(x=filtered_df[x_axis], y=filtered_df[y_axis], ax=ax3)
+ax3.set_xlabel(x_axis)
+ax3.set_ylabel(y_axis)
+
+st.pyplot(fig3)
+
+# -----------------------------
+# TOP PERFORMERS
+# -----------------------------
+st.subheader("🏆 Top Performers")
+
+sort_col = st.selectbox("Sort by", numeric_df.columns)
+
+top_df = filtered_df.sort_values(by=sort_col, ascending=False).head(10)
+
+st.dataframe(top_df)
 
 # -----------------------------
 # FOOTER
 # -----------------------------
 st.markdown("---")
-st.caption("ESG Financial Metrics Analysis Dashboard")
+st.caption("Built for ESG Financial Metrics Analysis | Streamlit Dashboard")
