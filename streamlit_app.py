@@ -256,19 +256,33 @@ MODEL_PATH = "model.pkl"
 if os.path.exists(MODEL_PATH):
     saved = joblib.load(MODEL_PATH)
 
+if isinstance(saved, dict):
     model = saved["model"]
     features = saved["features"]
+else:
+    model = saved
+    features = numeric_df.columns.tolist()
 
     st.success("✅ Model Loaded")
 
     input_data = {}
 
     for col in features:
+
+        if col in df.columns:
+            min_val = float(df[col].min())
+            max_val = float(df[col].max())
+        else   :
+        # fallback for missing columns
+            min_val = 0.0
+            max_val = 100.0
+
         input_data[col] = st.number_input(
-            col,
-            float(df[col].min()),
-            float(df[col].max())
-        )
+        label=col,
+        min_value=min_val,
+        max_value=max_val,
+        value=min_val
+    )
 
     input_df = pd.DataFrame([input_data])
 
