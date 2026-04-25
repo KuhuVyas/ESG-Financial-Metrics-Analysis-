@@ -18,17 +18,16 @@ This project focuses on analyzing the relationship between ESG (Environmental, S
 ## Dataset
 
 The dataset contains simulated ESG and financial data of 1000 global companies across multiple industries and regions (2015–2025).
-Size: 11,000 rows × 16 columns
-Companies: 1,000 unique entities
-Period: Annual data from 2015 to 2025
-
+* Size: 11,000 rows × 16 columns
+* Companies: 1,000 unique entities
+* Period: Annual data from 2015 to 2025
+Dataset link(Kaggle) : https://www.kaggle.com/datasets/shriyashjagtap/esg-and-financial-performance-dataset
 ---
 
 ## Tools & Technologies
 
 * Python (Pandas, NumPy)
 * Data Visualization (Matplotlib, Seaborn)
-* Business Querying (SQL)
 * Jupyter Notebook
 * GitHub for version control
 * Jira for project management
@@ -41,8 +40,8 @@ Period: Annual data from 2015 to 2025
 ESG-Financial-Metrics-Analysis/
 │
 ├── data/        # Dataset (raw + cleaned)
-├── reports/     # Outputs (PDFs, charts, insights)
-├── main/        # Actual work (code + notebooks + logic)
+├── core notebooks
+├── streamlit_app.py (deployment)
 │
 ├── README.md
 ├── requirements.txt (optional later) 
