@@ -290,8 +290,8 @@ else:
         pred = model.predict(input_df)
         st.success(f"Predicted Value: {round(pred[0], 3)}")
 
-else:
-    st.error("❌ model.pkl not found. Please train and save the model.")
+    else:
+        st.error("❌ model.pkl not found. Please train and save the model.")
 
 # -----------------------------
 # FOOTER
