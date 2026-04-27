@@ -12,29 +12,18 @@ import os
 st.set_page_config(page_title="ESG Intelligence Dashboard", layout="wide")
 
 # -----------------------------
-# DARK THEME + UI
+# CLEAN DARK UI
 # -----------------------------
 st.markdown("""
 <style>
-body {
-    background-color: #0E1117;
-    color: white;
-}
-.stMetric {
-    background-color: #1c1f26;
-    padding: 15px;
-    border-radius: 10px;
-}
-h1, h2, h3 {
-    color: #EAEAEA;
-}
+body {background-color: #0E1117; color: white;}
+.stMetric {background-color: #1c1f26; padding: 15px; border-radius: 10px;}
+h1, h2, h3 {color: #EAEAEA;}
 </style>
 """, unsafe_allow_html=True)
 
 plt.style.use("dark_background")
 sns.set_theme(style="darkgrid")
-
-FIG_SIZE = (5, 3)
 
 # -----------------------------
 # LOAD DATA
@@ -46,19 +35,18 @@ def load_data():
 df = load_data()
 
 # -----------------------------
-# AUTO DETECT COLUMNS
+# STRICT COLUMN MAPPING
 # -----------------------------
-numeric_df = df.select_dtypes(include=np.number)
+NUMERIC_COLS = [
+    'revenue', 'profit_margin', 'market_cap', 'growth_rate',
+    'esg_overall', 'esg_environmental', 'esg_social', 'esg_governance',
+    'carbon_emissions', 'water_usage', 'energy_consumption'
+]
 
-esg_col = [c for c in df.columns if "esg" in c.lower()]
-revenue_col = [c for c in df.columns if "revenue" in c.lower()]
-profit_col = [c for c in df.columns if "profit" in c.lower()]
-year_col = [c for c in df.columns if "year" in c.lower()]
-region_col = [c for c in df.columns if "region" in c.lower()]
-industry_col = [c for c in df.columns if "industry" in c.lower()]
+df = df.dropna(subset=NUMERIC_COLS)
 
 # -----------------------------
-# ESG CATEGORY
+# ESG CATEGORY (FIXED)
 # -----------------------------
 def esg_category(score):
     if score >= 70:
@@ -68,217 +56,161 @@ def esg_category(score):
     else:
         return "Low"
 
-if esg_col:
-    df["ESG_Category"] = df[esg_col[0]].apply(esg_category)
+df["ESG_Category"] = df["esg_overall"].apply(esg_category)
 
 # -----------------------------
 # SIDEBAR FILTERS
 # -----------------------------
-st.sidebar.title("🔎 Filters")
+st.sidebar.title("Filters")
 
 filtered_df = df.copy()
 
-if region_col:
-    selected = st.sidebar.multiselect("Region", df[region_col[0]].unique())
-    if selected:
-        filtered_df = filtered_df[filtered_df[region_col[0]].isin(selected)]
+region = st.sidebar.multiselect("Region", df["region"].unique())
+industry = st.sidebar.multiselect("Industry", df["industry"].unique())
+year = st.sidebar.multiselect("Year", sorted(df["year"].unique()))
 
-if industry_col:
-    selected = st.sidebar.multiselect("Industry", df[industry_col[0]].unique())
-    if selected:
-        filtered_df = filtered_df[filtered_df[industry_col[0]].isin(selected)]
+if region:
+    filtered_df = filtered_df[filtered_df["region"].isin(region)]
 
-if year_col:
-    selected = st.sidebar.multiselect("Year", sorted(df[year_col[0]].unique()))
-    if selected:
-        filtered_df = filtered_df[filtered_df[year_col[0]].isin(selected)]
+if industry:
+    filtered_df = filtered_df[filtered_df["industry"].isin(industry)]
 
-numeric_df = filtered_df.select_dtypes(include=np.number)
+if year:
+    filtered_df = filtered_df[filtered_df["year"].isin(year)]
+
+numeric_df = filtered_df[NUMERIC_COLS]
 
 # -----------------------------
 # TITLE
 # -----------------------------
-st.title("🌍 ESG Intelligence Dashboard")
+st.title("ESG Financial Intelligence Dashboard")
 
 # -----------------------------
-# KPI SECTION (REAL BUSINESS KPIs)
+# DATASET OVERVIEW
 # -----------------------------
-st.subheader("📊 Key Insights")
+st.subheader("Dataset Overview")
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
-with col1:
-    st.metric("Total Companies", len(filtered_df))
-
-with col2:
-    if esg_col:
-        avg_esg = filtered_df[esg_col[0]].mean()
-        st.metric("Avg ESG Score", round(avg_esg, 2))
-
-with col3:
-    if revenue_col:
-        avg_rev = filtered_df[revenue_col[0]].mean()
-        st.metric("Avg Revenue", f"{round(avg_rev,2)}")
-
-with col4:
-    if profit_col:
-        avg_profit = filtered_df[profit_col[0]].mean()
-        st.metric("Avg Profit", f"{round(avg_profit,2)}")
+col1.metric("Total Records", len(filtered_df))
+col2.metric("Unique Companies", filtered_df["company_id"].nunique())
+col3.metric("Industries Covered", filtered_df["industry"].nunique())
 
 # -----------------------------
-# BUSINESS INSIGHT SUMMARY
+# KPI SECTION (CORRECTED)
 # -----------------------------
-st.markdown("### 📌 Business Insights")
+st.subheader("Key Business KPIs")
 
-if esg_col and profit_col:
-    corr = filtered_df[[esg_col[0], profit_col[0]]].corr().iloc[0, 1]
+k1, k2, k3, k4 = st.columns(4)
 
-    st.info(f"""
-- ESG Score vs Profit correlation: **{round(corr,2)}**
-- {"High ESG companies tend to be more profitable" if corr > 0.4 else "Weak relationship between ESG and profitability"}
-- Median ESG Score: **{round(filtered_df[esg_col[0]].median(),2)}**
-""")
+k1.metric("Avg ESG Score", round(filtered_df["esg_overall"].mean(), 2))
+k2.metric("Avg Profit Margin", round(filtered_df["profit_margin"].mean(), 2))
+k3.metric("Avg Growth Rate", round(filtered_df["growth_rate"].mean(), 2))
+k4.metric("Avg Market Cap", round(filtered_df["market_cap"].mean(), 2))
 
 # -----------------------------
-# ESG DISTRIBUTION
+# ESG vs PROFITABILITY INSIGHT
 # -----------------------------
-if "ESG_Category" in filtered_df.columns:
-    st.subheader("📊 ESG Segmentation")
+st.subheader("ESG Impact on Profitability")
 
-    fig, ax = plt.subplots(figsize=FIG_SIZE)
+corr = filtered_df[['esg_overall', 'profit_margin']].corr().iloc[0,1]
 
-    sns.countplot(
-        data=filtered_df,
-        x="ESG_Category",
-        palette="viridis",
-        ax=ax
-    )
-
-    ax.set_title("ESG Category Distribution", fontsize=12)
-    ax.set_xlabel("")
-    ax.set_ylabel("Count")
-    st.pyplot(fig)
-
-# -----------------------------
-# TIME SERIES
-# -----------------------------
-if year_col:
-    st.subheader("📈 Trend Analysis")
-
-    metric = st.selectbox("Select Metric", numeric_df.columns)
-
-    trend = filtered_df.groupby(year_col[0])[metric].mean()
-
-    fig, ax = plt.subplots(figsize=FIG_SIZE)
-    trend.plot(marker='o', linewidth=2, ax=ax)
-
-    ax.set_title(f"{metric} Trend", fontsize=12)
-    ax.grid(alpha=0.3)
-
-    st.pyplot(fig)
-
-# -----------------------------
-# CORRELATION HEATMAP
-# -----------------------------
-st.subheader("🔗 Correlation Overview")
-
-fig, ax = plt.subplots(figsize=(6, 4))
-
-sns.heatmap(
-    numeric_df.corr(),
-    cmap="coolwarm",
-    linewidths=0.5,
-    cbar_kws={"shrink": 0.7},
-    ax=ax
-)
-
-ax.set_title("Feature Correlation", fontsize=12)
-st.pyplot(fig)
-
-# -----------------------------
-# SCATTER RELATIONSHIP
-# -----------------------------
-st.subheader("🔍 Relationship Analysis")
-
-x = st.selectbox("X-axis", numeric_df.columns)
-y = st.selectbox("Y-axis", numeric_df.columns)
-
-sample_df = filtered_df.sample(min(1000, len(filtered_df)))
-
-fig, ax = plt.subplots(figsize=FIG_SIZE)
-
-sns.scatterplot(
-    data=sample_df,
-    x=x,
-    y=y,
-    alpha=0.5,
-    s=30,
-    ax=ax
-)
-
+fig, ax = plt.subplots(figsize=(5,3))
 sns.regplot(
-    data=sample_df,
-    x=x,
-    y=y,
-    scatter=False,
-    ax=ax,
-    line_kws={"color": "red"}
+    data=filtered_df,
+    x='esg_overall',
+    y='profit_margin',
+    scatter_kws={'alpha':0.5},
+    ax=ax
 )
-
-ax.set_title(f"{x} vs {y}", fontsize=12)
+ax.set_title("ESG vs Profit Margin")
 st.pyplot(fig)
 
-# Insight
-corr_xy = filtered_df[[x, y]].corr().iloc[0, 1]
+st.info(f"Correlation: {round(corr,2)} → {'Positive relationship' if corr>0 else 'Weak relationship'}")
 
-st.info(f"""
-Correlation: **{round(corr_xy,2)}**
-→ {"Strong" if abs(corr_xy)>0.6 else "Moderate" if abs(corr_xy)>0.3 else "Weak"} relationship
-""")
+# -----------------------------
+# ESG COMPONENT IMPACT
+# -----------------------------
+st.subheader("ESG Pillar Impact")
+
+impact = filtered_df[
+    ['esg_environmental','esg_social','esg_governance','profit_margin']
+].corr()['profit_margin'].drop('profit_margin')
+
+fig, ax = plt.subplots(figsize=(5,3))
+impact.sort_values().plot(kind='barh', ax=ax)
+ax.set_title("Impact on Profitability")
+st.pyplot(fig)
+
+# -----------------------------
+# MARKET VALUE RELATION
+# -----------------------------
+st.subheader("ESG vs Market Valuation")
+
+fig, ax = plt.subplots(figsize=(5,3))
+sns.regplot(
+    data=filtered_df,
+    x='esg_overall',
+    y='market_cap',
+    ax=ax
+)
+ax.set_yscale('log')
+ax.set_title("ESG vs Market Cap (Log Scale)")
+st.pyplot(fig)
+
+# -----------------------------
+# CORRELATION MATRIX (FIXED)
+# -----------------------------
+st.subheader("Correlation Matrix")
+
+corr_df = numeric_df.select_dtypes(include=np.number)
+
+fig, ax = plt.subplots(figsize=(7,5))
+sns.heatmap(
+    corr_df.corr(),
+    cmap="coolwarm",
+    center=0,
+    annot=True,
+    fmt=".2f",
+    ax=ax
+)
+ax.set_title("Feature Correlation")
+st.pyplot(fig)
 
 # -----------------------------
 # TOP PERFORMERS
 # -----------------------------
-st.subheader("🏆 Top Performers")
+st.subheader("Top Performers")
 
-sort_col = st.selectbox("Sort By", numeric_df.columns)
-top_df = filtered_df.sort_values(by=sort_col, ascending=False).head(10)
-
-st.dataframe(top_df, use_container_width=True)
+top_df = filtered_df.sort_values(by="profit_margin", ascending=False).head(10)
+st.dataframe(top_df[['company_name','industry','profit_margin','esg_overall']], use_container_width=True)
 
 # -----------------------------
-# MODEL LOADING (FIXED)
+# ML PREDICTION ENGINE (FIXED)
 # -----------------------------
-st.subheader("🤖 ESG Prediction Engine")
+st.subheader("Growth Prediction Engine")
+
+MODEL_PATH = "model.pkl"
 
 try:
-    MODEL_PATH = "model.pkl"
-
     if os.path.exists(MODEL_PATH):
+
         saved = joblib.load(MODEL_PATH)
 
-        # handle both formats
-        if isinstance(saved, dict):
-            model = saved["model"]
-            features = saved["features"]
-        else:
-            model = saved
-            features = numeric_df.columns.tolist()
+        model = saved["model"]
+        scaler = saved["scaler"]
+        features = saved["features"]
 
-        st.success("✅ Model Loaded")
+        st.success("Model Loaded")
 
         input_data = {}
 
         for col in features:
-            if col in df.columns:
-                min_val = float(df[col].min())
-                max_val = float(df[col].max())
-            else:
-                min_val = 0.0
-                max_val = 100.0
+            min_val = float(df[col].min())
+            max_val = float(df[col].max())
 
             input_data[col] = st.number_input(
-                label=col,
+                col,
                 min_value=min_val,
                 max_value=max_val,
                 value=min_val
@@ -286,19 +218,20 @@ try:
 
         input_df = pd.DataFrame([input_data])
 
-        if st.button("Predict"):
-            pred = model.predict(input_df)
-            st.success(f"Predicted Value: {round(pred[0], 3)}")
+        if st.button("Predict Growth"):
+            input_scaled = scaler.transform(input_df[features])
+            pred = model.predict(input_scaled)
+            st.success(f"Predicted Growth Rate: {round(pred[0],3)}")
 
     else:
-        st.error("❌ model.pkl not found")
+        st.error("Model file not found")
 
 except Exception as e:
-    st.error("⚠️ Prediction Engine Failed")
-    st.write(str(e))  # shows actual error (VERY useful)
+    st.error("Prediction engine failed")
+    st.write(str(e))
 
 # -----------------------------
 # FOOTER
 # -----------------------------
 st.markdown("---")
-st.caption("ESG Intelligence System | Production-grade Analytics Dashboard")
+st.caption("ESG Analytics Platform | Data-driven Sustainability Insights")
