@@ -155,13 +155,7 @@ with tab2:
         scaler = saved["scaler"]
 
         # 🔥 TOP FEATURES ONLY
-        features = [
-            'growth_rate_lag1',
-            'revenue_growth',
-            'profit_trend',
-            'profit_margin',
-            'esg_overall'
-        ]
+        features = saved["features"]
 
         input_data = {}
 
@@ -176,7 +170,8 @@ with tab2:
         input_df = pd.DataFrame([input_data])
 
         if st.button("Predict Growth"):
-            pred = model.predict(scaler.transform(input_df))[0]
+            input_scaled = scaler.transform(input_df[features])
+            pred = model.predict(input_scaled)[0]
 
             st.success(f"Predicted Growth: {pred:.3f}")
 
