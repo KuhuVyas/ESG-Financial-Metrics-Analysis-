@@ -190,25 +190,75 @@ with tab2:
 # =====================================================
 with tab3:
 
-    st.subheader("📊 Correlation Heatmap")
+    # -----------------------------
+    # ESG vs Growth (BAR)
+    # -----------------------------
+    st.subheader("📊 ESG Impact on Growth")
 
-    numeric_df = filtered_df.select_dtypes(include=['number'])
+    esg_growth = filtered_df.groupby('ESG_Category')['growth_rate'].mean().reset_index()
 
-    fig = px.imshow(
-    numeric_df.corr(),
-    color_continuous_scale='RdBu_r',
-    text_auto=True
-)
+    fig = px.bar(
+        esg_growth,
+        x='ESG_Category',
+        y='growth_rate',
+        color='ESG_Category',
+        color_discrete_sequence=px.colors.qualitative.Set2,
+        title="Average Growth by ESG Category"
+    )
     st.plotly_chart(fig, use_container_width=True)
 
+    # -----------------------------
+    # INDUSTRY PERFORMANCE (HORIZONTAL BAR)
+    # -----------------------------
+    st.subheader("🏭 Industry Profitability")
+
+    industry_perf = (
+        filtered_df.groupby('industry')['profit_margin']
+        .mean()
+        .sort_values()
+        .reset_index()
+    )
+
+    fig = px.bar(
+        industry_perf,
+        x='profit_margin',
+        y='industry',
+        orientation='h',
+        color='profit_margin',
+        color_continuous_scale='Teal',
+        title="Profit Margin by Industry"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # -----------------------------
+    # ESG DISTRIBUTION (DONUT)
+    # -----------------------------
+    st.subheader("🌱 ESG Category Distribution")
+
+    fig = px.pie(
+        filtered_df,
+        names='ESG_Category',
+        hole=0.5,
+        color_discrete_sequence=px.colors.qualitative.Set2,
+        title="Company Distribution by ESG Category"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # -----------------------------
+    # TOP COMPANIES
+    # -----------------------------
     st.subheader("🏆 Top Companies")
 
     top = filtered_df.sort_values(by='growth_rate', ascending=False).head(10)
 
-    st.dataframe(top[['company_name','growth_rate','esg_overall']],
-                 use_container_width=True)
+    st.dataframe(
+        top[['company_name','growth_rate','esg_overall']],
+        use_container_width=True
+    )
 
-    # Insight
+    # -----------------------------
+    # INSIGHT
+    # -----------------------------
     corr = filtered_df[['esg_overall','growth_rate']].corr().iloc[0,1]
 
     if corr > 0.2:
@@ -217,9 +267,3 @@ with tab3:
         msg = "Weak ESG-growth relationship"
 
     st.info(f"{msg} (corr = {corr:.2f})")
-
-# -----------------------------
-# FOOTER
-# -----------------------------
-st.markdown("---")
-st.caption("ESG Intelligence Platform | Corporate Analytics Dashboard")
