@@ -92,7 +92,7 @@ with tab1:
     region_df.columns = ['Region', 'Count']
 
     fig = px.pie(region_df, names='Region', values='Count',
-                 color_discrete_sequence=px.colors.qualitative.Set2)
+                 color_discrete_sequence=["#00ADB5", "#F8B500", "#FF6363"])
     st.plotly_chart(fig, use_container_width=True)
 
     # -----------------------------
@@ -202,7 +202,7 @@ with tab3:
         x='ESG_Category',
         y='growth_rate',
         color='ESG_Category',
-        color_discrete_sequence=px.colors.qualitative.Set2,
+        color_discrete_sequence=["#00ADB5", "#F8B500", "#FF6363"],
         title="Average Growth by ESG Category"
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -239,7 +239,7 @@ with tab3:
         filtered_df,
         names='ESG_Category',
         hole=0.5,
-        color_discrete_sequence=px.colors.qualitative.Set2,
+        color_discrete_sequence=["#00ADB5", "#F8B500", "#FF6363"],
         title="Company Distribution by ESG Category"
     )
     st.plotly_chart(fig, use_container_width=True)
