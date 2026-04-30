@@ -197,9 +197,13 @@ with tab3:
 
     st.subheader("📊 Correlation Heatmap")
 
-    fig = px.imshow(filtered_df.corr(),
-                    color_continuous_scale='RdBu_r',
-                    text_auto=True)
+    numeric_df = filtered_df.select_dtypes(include=['number'])
+
+    fig = px.imshow(
+    numeric_df.corr(),
+    color_continuous_scale='RdBu_r',
+    text_auto=True
+)
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("🏆 Top Companies")
